@@ -65,7 +65,7 @@ touch /etc/mysql/conf.d/mysqld_openstack.cnf
 cat << EOF > /etc/mysql/conf.d/mysqld_openstack.cnf
 
 [mysqld]
-bind-address = 0.0.0.0
+bind-address = 172.16.69.110
 
 [mysqld]
 default-storage-engine = innodb
