@@ -61,8 +61,8 @@ apt-get -y install mariadb-server python-mysqldb curl
 echocolor "Configuring MYSQL"
 sleep 5
 
-touch /etc/mysql/conf.d/mysqld_openstack.cnf
-cat << EOF > /etc/mysql/conf.d/mysqld_openstack.cnf
+touch /etc/mysql/conf.d/openstack.cnf
+cat << EOF > /etc/mysql/conf.d/openstack.cnf
 
 [mysqld]
 bind-address = 172.16.69.110
