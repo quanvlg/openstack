@@ -1,0 +1,152 @@
+#### Network interface
+
+# Interface MGNT
+ auto eth0
+ iface eth0 inet static
+ 	address 10.10.10.210
+ 	netmask 255.255.255.0
+
+ # Interface EXT
+ auto eth1
+ iface eth1 inet static
+ 	address 172.16.69.210
+ 	netmask 255.255.255.0
+ 	gateway 172.16.69.2
+ 	dns-nameservers 8.8.8.8
+#### config host file
+	127.0.0.1      localhost controller
+ 	10.10.10.210    controller
+ 	10.10.10.211    compute
+##### Cài đặt NTP
+	apt-get -y install chrony
+	# cau hinh chrony
+	server 1.vn.pool.ntp.org iburst
+ 	server 0.asia.pool.ntp.org iburst
+ 	server 3.asia.pool.ntp.org iburst
+	# kiem tra
+	chronyc sources
+### Enable the OpenStack repository
+	 apt-get install software-properties-common -y
+	 add-apt-repository cloud-archive:mitaka -y
+	 
+	 apt-get update && apt-get dist-upgrade 
+	 apt-get install python-openstackclient 
+# Restart server
+	init 6
+###install SQL database
+	apt-get install mariadb-server python-pymysql
+	# config SQL
+	/etc/mysql/conf.d/openstack.cnf
+[mysqld]
+bind-address = 10.10.10.120
+[mysqld]
+default-storage-engine = innodb
+innodb_file_per_table
+max_connections = 4096
+collation-server = utf8_general_ci
+character-set-server = utf8
+#restart SQL service
+service mysql restart
+###Install NoSQL database == su dung telemetry service
+apt-get install mongodb-server mongodb-clients python-pymongo
+#config NoSQL
+/etc/mongodb.conf
+
+bind-ip=10.10.10.120
+
+/var/lib/mongodb/journal
+#finalize
+service mongodb stop
+rm /var/lib/mongodb/journal/prealloc.*
+service mongodb start
+### install message queue rabbitmq
+apt-get install rabbitmq-server
+#tao user openstack
+rabbitmqctl add_user openstack Mitaka123
+#permit config
+rabbitmqctl set_permissions openstack ".*" ".*" ".*"
+###install memcache 
+apt-get install memcached python-memcache
+#config 
+/etc/memcached.conf 
+-l 10.10.10.120
+#finalize
+service memcached restart
+###indentity service
+##install&config
+# create database 
+mysql -u root -p
+-- enter passwd database
+CREATE DATABASE keystone;
+GRANT ALL PRIVILEGES ON keystone.* TO 'keystone'@'localhost' \
+  IDENTIFIED BY 'Mitaka123';
+GRANT ALL PRIVILEGES ON keystone.* TO 'keystone'@'%' \
+  IDENTIFIED BY 'Mitaka123';
+#Generate a random value
+openssl rand -hex 10 --- 
+d5cc0f6391c372d11f68
+#config
+#1Disable the keystone service from starting automatically after installation
+echo "manual" > /etc/init/keystone.override
+#2.Run the following command to install the packages
+apt-get install keystone apache2 libapache2-mod-wsgi
+#config keystone
+/etc/keystone/keystone.conf
+[DEFAULT]
+admin_token = d5cc0f6391c372d11f68
+[database]
+connection = mysql+pymysql://keystone:Mitaka123@controller/keystone
+[token]
+provider = fernet
+# Populate the Identity service database
+su -s /bin/sh -c "keystone-manage db_sync" keystone
+#Initialize Fernet keys
+keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
+#config apache http server
+/etc/apache2/apache2.conf === edit servar nameservers
+ServerName controller
+#Create the /etc/apache2/sites-available/wsgi-keystone.conf
+/etc/apache2/sites-available/wsgi-keystone.conf
+Listen 5000
+Listen 35357
+
+<VirtualHost *:5000>
+    WSGIDaemonProcess keystone-public processes=5 threads=1 user=keystone group=keystone display-name=%{GROUP}
+    WSGIProcessGroup keystone-public
+    WSGIScriptAlias / /usr/bin/keystone-wsgi-public
+    WSGIApplicationGroup %{GLOBAL}
+    WSGIPassAuthorization On
+    ErrorLogFormat "%{cu}t %M"
+    ErrorLog /var/log/apache2/keystone.log
+    CustomLog /var/log/apache2/keystone_access.log combined
+
+    <Directory /usr/bin>
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+<VirtualHost *:35357>
+    WSGIDaemonProcess keystone-admin processes=5 threads=1 user=keystone group=keystone display-name=%{GROUP}
+    WSGIProcessGroup keystone-admin
+    WSGIScriptAlias / /usr/bin/keystone-wsgi-admin
+    WSGIApplicationGroup %{GLOBAL}
+    WSGIPassAuthorization On
+    ErrorLogFormat "%{cu}t %M"
+    ErrorLog /var/log/apache2/keystone.log
+    CustomLog /var/log/apache2/keystone_access.log combined
+
+    <Directory /usr/bin>
+        Require all granted
+    </Directory>
+</VirtualHost>
+#Enable the Identity service virtual hosts
+ln -s /etc/apache2/sites-available/wsgi-keystone.conf /etc/apache2/sites-enabled
+#finalize
+service apache2 restart
+rm -f /var/lib/keystone/keystone.db === xoa 
+
+##Create the service entity and API endpoints
+export OS_TOKEN=d5cc0f6391c372d11f68
+export OS_URL=http://controller:35357/v3
+export OS_IDENTITY_API_VERSION=3
+
