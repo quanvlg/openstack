@@ -146,7 +146,9 @@ service apache2 restart
 rm -f /var/lib/keystone/keystone.db === xoa 
 
 ##Create the service entity and API endpoints
-export OS_TOKEN=d5cc0f6391c372d11f68
+export OS_TOKEN=767db9e34bb3e723f49a
 export OS_URL=http://controller:35357/v3
-export OS_IDENTITY_API_VERSION=3
-
+export OS_IDENTITY_API_VERSION=3 
+#create end point
+openstack service create \
+  --name keystone --description "OpenStack Identity" identity
