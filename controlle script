@@ -14,15 +14,15 @@
  	gateway 172.16.69.2
  	dns-nameservers 8.8.8.8
 #### config host file
-	127.0.0.1      localhost controller
- 	10.10.10.210    controller
- 	10.10.10.211    compute
+127.0.0.1      localhost controller
+10.10.10.210    controller
+10.10.10.211    compute
 ##### Cài đặt NTP
 	apt-get -y install chrony
 	# cau hinh chrony
-	server 1.vn.pool.ntp.org iburst
- 	server 0.asia.pool.ntp.org iburst
- 	server 3.asia.pool.ntp.org iburst
+server 1.vn.pool.ntp.org iburst
+server 0.asia.pool.ntp.org iburst
+server 3.asia.pool.ntp.org iburst
 	# kiem tra
 	chronyc sources
 ### Enable the OpenStack repository
